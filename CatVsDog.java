@@ -20,7 +20,7 @@ public class CatVsDog {
      *  Outputs the maximum number of satisfied voters given the test case.
      *  Treats each case as a Bipartite graph, with votes represented as Vertices
      *  Undirected edges exist to show an unsatisfied voter. */
-    public static void main(String[] args) {
+    public static void main(String[] ignored) {
         try {
 	    BufferedReader reader =
 		new BufferedReader(new InputStreamReader(System.in));
@@ -31,7 +31,7 @@ public class CatVsDog {
 		Integer.parseInt(tokenizer.nextToken());
 		Integer.parseInt(tokenizer.nextToken());
 		int v = Integer.parseInt(tokenizer.nextToken());
-		Vote[] votes = new Vote[v];
+		resetData(v);
 		for (int k = 0; k < v; k += 1) {
 		    tokenizer = new StringTokenizer(reader.readLine());
 		    String keep = tokenizer.nextToken();
@@ -39,8 +39,8 @@ public class CatVsDog {
 		    Vote vote = new Vote(keep, out);
 		    votes[k] = vote;
 		}
-		resetData();
-		System.out.println(v - hopcroftKarp(votes));
+		createGraph();
+		System.out.println(v - hopcroftKarp());
 	    }
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -49,21 +49,21 @@ public class CatVsDog {
 
     /** Adds an undirected edge between vertices whose labels (VOTES)
      *  are contradictory, thus resulting in at least one, dissatisfied voter. */
-    private static void addContradictions(Vote[] votes){        
-        for (int i = 0; i < votes.length; i++) {
-            Vote vote1 = votes[i];
-            for (int j = i+1; j < votes.length; j++) {
-                Vote vote2 = votes[j];
-                if (vote1.isContradiction(vote2)){
-		    vote1.addEdge(vote2);
-                    vote2.addEdge(vote1);
-		    if (vote1.isCatLover()) {
-                        catLovers.add(vote1);
+    private static void createGraph(){
+        for (int i = 0; i < votes.length; i += 1) {
+            Vote vote = votes[i];
+            for (int k = i + 1; k < votes.length; k += 1) {
+                Vote nextVote = votes[k];
+                if (vote.isContradiction(nextVote)){
+		    vote.addEdge(nextVote);
+                    nextVote.addEdge(vote);
+		    if (vote.isCatLover()) {
+                        catLovers.add(vote);
                     } else {
-                        catLovers.add(vote2);
+                        catLovers.add(nextVote);
                     }
-                    dist.put(vote1, Integer.MAX_VALUE);
-                    dist.put(vote2, Integer.MAX_VALUE);
+                    dist.put(vote, Integer.MAX_VALUE);
+                    dist.put(nextVote, Integer.MAX_VALUE);
                 }
             }
         }
@@ -72,14 +72,13 @@ public class CatVsDog {
     /** Solves test cases by performing a Hopcroft-Karp search 
      *  in order to find the maximum number of satisfied voters s.t.
      *  Max(satisfied) = N voters - the total matchings. */
-    static int hopcroftKarp(Vote[] votes){
-	addContradictions(votes);
+    static int hopcroftKarp(){
         int matching = 0;
-        while(bredthFirstSearch()){
-            for(Vote v : catLovers){
-                if(pairs.get(v) == null){
-                    if(depthFirstSearch(v)){
-                        matching++;
+        while (bredthFirstSearch()) {
+            for (Vote v : catLovers) {
+                if (pairs.get(v) == null) {
+                    if (depthFirstSearch(v)) {
+                        matching += 1;
                     }
                 }
             }
@@ -89,23 +88,23 @@ public class CatVsDog {
 
     /** Performs BFS on Graph in order to partition the graph to be later
      *  traversed using DFS, as only unmatched edges may be traversed. */
-    static boolean bredthFirstSearch(){
-        Queue<Vote> Q = new LinkedList<Vote>();
-        for(Vote v : catLovers){
-            if(pairs.get(v) == null){
+    static boolean bredthFirstSearch() {
+        Queue<Vote> Q = new LinkedList<>();
+        for (Vote v : catLovers) {
+            if (pairs.get(v) == null) {
                 dist.put(v, 0);
                 Q.add(v);
-            }else{
+            } else {
                 dist.put(v, Integer.MAX_VALUE);
             }
         }
         dist.put(null, Integer.MAX_VALUE); 
-        while(!Q.isEmpty()){
+        while (!Q.isEmpty()) {
             Vote v = Q.poll();
-            if(v != null){
-                for(Vote u : v.getEdges()){
-                    if(dist.get(pairs.get(u)) == Integer.MAX_VALUE){
-                        dist.put(pairs.get(u), dist.get(v)+1);
+            if (v != null) {
+                for (Vote u : v.getEdges()) {
+                    if (dist.get(pairs.get(u)) == Integer.MAX_VALUE) {
+                        dist.put(pairs.get(u), dist.get(v) + 1);
                         Q.add(pairs.get(u));
                     }
                 }
@@ -117,11 +116,11 @@ public class CatVsDog {
     
     /** Performs a DFS on vertex, V, in order to try and find if a
       * a contradictory set of votes exists. */
-    static boolean depthFirstSearch(Vote v){
-        if(v != null){
-            for(Vote u : v.getEdges()){                
-                if(dist.get(pairs.get(u)) == dist.get(v)+1){
-                    if(depthFirstSearch(pairs.get(u))){
+    static boolean depthFirstSearch(Vote v) {
+        if (v != null) {
+            for (Vote u : v.getEdges()) {                
+                if (dist.get(pairs.get(u)) == dist.get(v) + 1) {
+                    if (depthFirstSearch(pairs.get(u))) {
                         pairs.put(v, u);
                         pairs.put(u, v);
                         return true;
@@ -193,11 +192,17 @@ public class CatVsDog {
 
 
     /** Re-instantiates all instance variables and data structures. */
-    private static void resetData() {
+    private static void resetData(int v) {
+	votes = new Vote[v];
 	catLovers = new HashSet<Vote>();
         pairs = new HashMap<Vote, Vote>();
         dist = new HashMap<Vote, Integer>();
     }
+
+    /** Serves as the bipartite graph G = G1 U G2 U NIL. 
+     *  G1 is the partition of voters who are cat lovers.
+     *  G2 is the partition of voters who are dog lovers. */
+    private static Vote[] votes;
 
     /** Determines if Vertex should be traversed over in G1 or G2. 
      *  Aides in representing the NIL partition of G by mapping Vertices to NULL. */
