@@ -49,7 +49,7 @@ public class CatVsDog {
 
     /** Adds an undirected edge between vertices whose labels (VOTES)
      *  are contradictory, thus resulting in at least one, dissatisfied voter. */
-    private static void createGraph(){
+    private static void createGraph() {
         for (int i = 0; i < votes.length; i += 1) {
             Vote vote = votes[i];
             for (int k = i + 1; k < votes.length; k += 1) {
@@ -72,7 +72,7 @@ public class CatVsDog {
     /** Solves test cases by performing a Hopcroft-Karp search 
      *  in order to find the maximum number of satisfied voters s.t.
      *  Max(satisfied) = N voters - the total matchings. */
-    static int hopcroftKarp(){
+    static int hopcroftKarp() {
         int matching = 0;
         while (bredthFirstSearch()) {
             for (Vote v : catLovers) {
@@ -168,12 +168,12 @@ public class CatVsDog {
         
 	/** Connects this Vote in G1 to a Vote in G2 iff the votes
 	 *  are contradictory. */
-	void addEdge(Vote vote){
+	void addEdge(Vote vote) {
             this.edges.add(vote);
         }    
         
 	/** Returns the Votes at the end of the edges from this Vote. */
-	ArrayList<Vote> getEdges(){
+	ArrayList<Vote> getEdges() {
             return edges;
         }
 
