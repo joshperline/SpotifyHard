@@ -1,8 +1,12 @@
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.HashMap;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.StringTokenizer;
+import java.util.ArrayList;
 
 /** Spotify Programming Lab: Level "HARD"
  *  "Cats vs Dogs"
@@ -16,199 +20,193 @@ public class CatVsDog {
      *  Outputs the maximum number of satisfied voters given the test case.
      *  Treats each case as a Bipartite graph, with votes represented as Vertices
      *  Undirected edges exist to show an unsatisfied voter. */
-    public static void main(String[] ignored) { 
-	BufferedReader reader =
-	     new BufferedReader(new InputStreamReader(System.in));
-	int c = 0;
-	int d = 0;
-	int v = 0;
-	resetData();
-	_no = new NoLabel();
-	try {
-	    String read;		
-	    int vote = 0;
-	    int cases = 0;
-	    int currCase = 0;
-	    read = reader.readLine();
-	    String[] firstLine = read.split("\\s+");
-	    cases = Integer.parseInt(firstLine[0]);
-	    String ans = "";
+    public static void main(String[] args) {
+        try {
+	    BufferedReader reader =
+		new BufferedReader(new InputStreamReader(System.in));
+	    StringTokenizer tokenizer = new StringTokenizer(reader.readLine());
+	    final int cases = Integer.parseInt(tokenizer.nextToken());
 	    for (int i = 0; i < cases; i += 1) {
-		read = reader.readLine();
-		String[] line = read.split("\\s+");
-		resetData();
-		c = Integer.parseInt(line[0]);
-		d = Integer.parseInt(line[1]);
-		v = Integer.parseInt(line[2]);
+		tokenizer = new StringTokenizer(reader.readLine());
+		Integer.parseInt(tokenizer.nextToken());
+		Integer.parseInt(tokenizer.nextToken());
+		int v = Integer.parseInt(tokenizer.nextToken());
+		Vote[] votes = new Vote[v];
 		for (int k = 0; k < v; k += 1) {
-		    read = reader.readLine();
-		    addToGraph(read);
+		    tokenizer = new StringTokenizer(reader.readLine());
+		    String keep = tokenizer.nextToken();
+		    String out = tokenizer.nextToken();
+		    Vote vote = new Vote(keep, out);
+		    votes[k] = vote;
 		}
-		createEdges();
-		ans += v - hopcroftKarp() + "\n";
+		resetData();
+		System.out.println(v - hopcroftKarp(votes));
 	    }
-	    System.out.print(ans);
-	} catch (Exception e) {
-	    e.printStackTrace();
-	}
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
-    /** Adds vertices to test cases, N's, bipartite graph. */
-    private static void addToGraph(String entry) {	
-	if (entry.substring(0, 1).equals("C")) {
-	    _catVerts.add(_G.add(new Vote(entry)));
-	} else {
-	    _dogVerts.add(_G.add(new Vote(entry)));
-	}
-    }
-
-    /** Adds an Undirected edge between vertices whose labels (votes)
+    /** Adds an undirected edge between vertices whose labels (VOTES)
      *  are contradictory, thus resulting in at least one, dissatisfied voter. */
-    private static void createEdges() {
-	for (Graph<Vote, NoLabel>.Vertex cat: _catVerts) {
-	    for (Graph<Vote, NoLabel>.Vertex dog: _dogVerts) {
-		if (cat.getLabel().isContradiction(dog.getLabel())) {
-		    _G.add(cat, dog, _no);
-		}
-	    }
-	}
+    private static void addContradictions(Vote[] votes){        
+        for (int i = 0; i < votes.length; i++) {
+            Vote vote1 = votes[i];
+            for (int j = i+1; j < votes.length; j++) {
+                Vote vote2 = votes[j];
+                if (vote1.isContradiction(vote2)){
+		    vote1.addEdge(vote2);
+                    vote2.addEdge(vote1);
+		    if (vote1.isCatLover()) {
+                        catLovers.add(vote1);
+                    } else {
+                        catLovers.add(vote2);
+                    }
+                    dist.put(vote1, Integer.MAX_VALUE);
+                    dist.put(vote2, Integer.MAX_VALUE);
+                }
+            }
+        }
     }
-
-
+    
     /** Solves test cases by performing a Hopcroft-Karp search 
      *  in order to find the maximum number of satisfied voters s.t.
      *  Max(satisfied) = N voters - the total matchings. */
-    private static int hopcroftKarp() {
-	_nilMap = new HashMap<>();
-	dist = new HashMap<>();
-	for (Graph<Vote, NoLabel>.Vertex v : _G.vertices()) {
-	    dist.put(v, Integer.MAX_VALUE);
-	}
-	int matching = 0;
-	while (BFS()) {
-	    for (Graph<Vote, NoLabel>.Vertex cat: _catVerts) {
-		if (_nilMap.get(cat) == null) {
-		    if (DFS(cat)) {
-			matching += 1;
-		    }
-		}
-	    }
-	}
-	return matching;
+    static int hopcroftKarp(Vote[] votes){
+	addContradictions(votes);
+        int matching = 0;
+        while(bredthFirstSearch()){
+            for(Vote v : catLovers){
+                if(pairs.get(v) == null){
+                    if(depthFirstSearch(v)){
+                        matching++;
+                    }
+                }
+            }
+        }
+        return matching;
     }
 
     /** Performs BFS on Graph in order to partition the graph to be later
      *  traversed using DFS, as only unmatched edges may be traversed. */
-    private static boolean BFS() {
-	LinkedList<Graph<Vote, NoLabel>.Vertex> Q =
-            new LinkedList<>();
-	for (Graph<Vote, NoLabel>.Vertex cat : _catVerts) {
-	    if (_nilMap.get(cat) == null) {
-		dist.put(cat, 0);
-		Q.add(cat);
-	    } else {
-		dist.put(cat, Integer.MAX_VALUE);
-	    }
-	}
-	dist.put(null, Integer.MAX_VALUE);
-	while (!Q.isEmpty()) {
-	    Graph<Vote, NoLabel>.Vertex v = Q.poll();
-	    if (v != null) {
-		for (Graph<Vote, NoLabel>.Vertex u : _G.successors(v)) {
-		    if (dist.get(_nilMap.get(u)) == Integer.MAX_VALUE) {
-			dist.put(_nilMap.get(u), dist.get(v) + 1);
-			Q.add(_nilMap.get(u));
-		    }
-		}
-	    }
-	}
-	return dist.get(null) != Integer.MAX_VALUE;
+    static boolean bredthFirstSearch(){
+        Queue<Vote> Q = new LinkedList<Vote>();
+        for(Vote v : catLovers){
+            if(pairs.get(v) == null){
+                dist.put(v, 0);
+                Q.add(v);
+            }else{
+                dist.put(v, Integer.MAX_VALUE);
+            }
+        }
+        dist.put(null, Integer.MAX_VALUE); 
+        while(!Q.isEmpty()){
+            Vote v = Q.poll();
+            if(v != null){
+                for(Vote u : v.getEdges()){
+                    if(dist.get(pairs.get(u)) == Integer.MAX_VALUE){
+                        dist.put(pairs.get(u), dist.get(v)+1);
+                        Q.add(pairs.get(u));
+                    }
+                }
+            }
+        }
+        return dist.get(null) != Integer.MAX_VALUE;
     }
-
+    
+    
     /** Performs a DFS on vertex, V, in order to try and find if a
       * a contradictory set of votes exists. */
-    private static boolean DFS(Graph<Vote, NoLabel>.Vertex v) {
-	if (v != null) {
-	    for (Graph<Vote, NoLabel>.Vertex u : _G.successors(v)) {
-		if (dist.get(_nilMap.get(u)) == dist.get(v) + 1) {
-		    if (DFS(_nilMap.get(u))) {
-			_nilMap.put(u, v);
-			_nilMap.put(v, u);
-			return true;
-		    }
-		}
-	    }
-	    dist.put(v, Integer.MAX_VALUE);
-	    return false;
-	}
-	return true;
+    static boolean depthFirstSearch(Vote v){
+        if(v != null){
+            for(Vote u : v.getEdges()){                
+                if(dist.get(pairs.get(u)) == dist.get(v)+1){
+                    if(depthFirstSearch(pairs.get(u))){
+                        pairs.put(v, u);
+                        pairs.put(u, v);
+                        return true;
+                    }
+                }
+            }
+            dist.put(v, Integer.MAX_VALUE);
+            return false;
+        }
+        return true;
     }
 
     /** The VLabel of the bipartite graph.
      *  Has methods for testing and for determining contradictory votes. */
     static class Vote {
-	/** Contsrtuctor takes in ID value of the form:
-	 *  "Cx Dy" || "Dx Cy" s.t x is a positive integer. */
-	Vote(String id) {
-	    _id = id;
+
+	/** Takes in a pet the voter wants to KEEP
+	 *  and a pet the voter wants to THROWAWAY. */
+        Vote(String keep, String throwAway) {
+            this.keep = keep;
+            this.throwAway = throwAway;
+            this.edges = new ArrayList<Vote>();
+        }
+
+	/** Returns true iff VOTE2 is contradicts this vote. */
+	boolean isContradiction(Vote vote2) {
+	    return (this.getKeep().equals(vote2.getThrowAway())
+		    || vote2.getKeep().equals(this.getThrowAway()));
 	}
 
-	/** The ID value of a pet. */
-	private String _id;
+	/** Returns true iff this voter wants to keep a cat on the show. */
+	boolean isCatLover() {
+	    return (this.getKeep().charAt(0) == 'C');
+	}
+
+	/** Returns the pet this voter wants to keep. */
+        String getKeep() {
+            return keep;
+        }
+
+	/** Returns the pet this voter wants to vote out. */
+        String getThrowAway() {
+            return throwAway;
+        }
+        
+	/** Connects this Vote in G1 to a Vote in G2 iff the votes
+	 *  are contradictory. */
+	void addEdge(Vote vote){
+            this.edges.add(vote);
+        }    
+        
+	/** Returns the Votes at the end of the edges from this Vote. */
+	ArrayList<Vote> getEdges(){
+            return edges;
+        }
+
+	/** Pet this voter wants to keep. */
+        private String keep;
 	
-	/** Returns the id of the pet. Useful for testing. */
-	String getID() {
-	    return _id;
-	}
+	/** Pet this voter wants to vote out. */
+        private String throwAway;
+	
+	/** List of edges from this vertex in the bipartite graph. */
+        private ArrayList<Vote> edges;
 
-	/** Returns the opposite form of this vote.
-	 *  i.e. opposite(C3 D5) --> D5 C3. */
-	String getOpposite() {
-	    if (_id.substring(0, 1).equals("C")) {
-		return ("D" + _id.substring(4, 5)
-			+ " " + "C" + _id.substring(1, 2));
-	    } else {
-	        return ("C" + _id.substring(4, 5)
-			+ " " + "D" + _id.substring(1, 2));
-	    }
-	}
-
-	/** Returns true iff VOTE */
-	boolean isContradiction(Vote vote) {
-	    return this.getID().equals(vote.getOpposite());
-	}
-    }
-    
-    /** Re-instantiates all instance variables and data structures. */
-    private static void resetData() {
-	_G = new UndirectedGraph<Vote, NoLabel>();
-	_catVerts = new ArrayList<>();
-	_dogVerts = new ArrayList<>();
-	_nilMap = new HashMap<>();
     }
 
-    
     /* ---------------------------- Data Structures ------------------------------ */
 
 
-    /** The current graph. */
-    private static UndirectedGraph<Vote, NoLabel> _G;
-
-    /** Collects Vertices as partitions of the bipartite graph.
-     *  _catVerts serves as G1
-     *  _dogVerts serves as G2
-     *  s.t. G = G1 U G2 U NIL. */
-    private static ArrayList<Graph<Vote, NoLabel>.Vertex> _catVerts, _dogVerts;
-   
-    /** NoLabel placeholder object to be used in lieu of ELabels. */
-    private static NoLabel _no;
+    /** Re-instantiates all instance variables and data structures. */
+    private static void resetData() {
+	catLovers = new HashSet<Vote>();
+        pairs = new HashMap<Vote, Vote>();
+        dist = new HashMap<Vote, Integer>();
+    }
 
     /** Determines if Vertex should be traversed over in G1 or G2. 
      *  Aides in representing the NIL partition of G by mapping Vertices to NULL. */
-    private static HashMap<Graph<Vote, NoLabel>.Vertex, Graph<Vote, NoLabel>.Vertex>
-	_nilMap;
+    private static HashMap<Vote, Vote> pairs;
 
     /** Maps Vertices to its heuristic distance value. */
-    private static HashMap<Graph<Vote, NoLabel>.Vertex, Integer> dist;
+    private static HashMap<Vote, Integer> dist;
+
+    /** G = All Votes, G1 = catLovers. */
+    private static HashSet<Vote> catLovers;
 
 }
