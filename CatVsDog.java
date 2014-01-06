@@ -1,18 +1,18 @@
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Queue;
-import java.util.StringTokenizer;
+import java.util.LinkedList;
 import java.util.ArrayList;
+import java.util.StringTokenizer;
+
 
 /** Spotify Programming Lab: Level "HARD"
  *  "Cats vs Dogs"
  *  @author Joshua Perline
  */
-
 public class CatVsDog {
     
     /** Reads from Standard Input, input files are IGNORED.
@@ -28,28 +28,25 @@ public class CatVsDog {
 	    final int cases = Integer.parseInt(tokenizer.nextToken());
 	    for (int i = 0; i < cases; i += 1) {
 		tokenizer = new StringTokenizer(reader.readLine());
-		Integer.parseInt(tokenizer.nextToken());
-		Integer.parseInt(tokenizer.nextToken());
+		tokenizer.nextToken();
+	        tokenizer.nextToken();
 		int v = Integer.parseInt(tokenizer.nextToken());
 		resetData(v);
 		for (int k = 0; k < v; k += 1) {
-		    tokenizer = new StringTokenizer(reader.readLine());
-		    String keep = tokenizer.nextToken();
-		    String out = tokenizer.nextToken();
-		    Vote vote = new Vote(keep, out);
+		    Vote vote = new Vote(reader.readLine());
 		    votes[k] = vote;
 		}
 		createGraph();
 		System.out.println(v - hopcroftKarp());
 	    }
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     /** Adds an undirected edge between vertices whose labels (VOTES)
      *  are contradictory, thus resulting in at least one, dissatisfied voter. */
-    private static void createGraph() {
+    private static void createGraph(){
         for (int i = 0; i < votes.length; i += 1) {
             Vote vote = votes[i];
             for (int k = i + 1; k < votes.length; k += 1) {
@@ -72,7 +69,7 @@ public class CatVsDog {
     /** Solves test cases by performing a Hopcroft-Karp search 
      *  in order to find the maximum number of satisfied voters s.t.
      *  Max(satisfied) = N voters - the total matchings. */
-    static int hopcroftKarp() {
+    static int hopcroftKarp(){
         int matching = 0;
         while (bredthFirstSearch()) {
             for (Vote v : catLovers) {
@@ -137,11 +134,12 @@ public class CatVsDog {
      *  Has methods for testing and for determining contradictory votes. */
     static class Vote {
 
-	/** Takes in a pet the voter wants to KEEP
+	/** Takes in a LINE and finds the pet the voter wants to KEEP
 	 *  and a pet the voter wants to THROWAWAY. */
-        Vote(String keep, String throwAway) {
-            this.keep = keep;
-            this.throwAway = throwAway;
+	Vote(String line) {
+	    StringTokenizer t = new StringTokenizer(line);
+	    this.keep = t.nextToken();
+	    this.throwAway = t.nextToken();
             this.edges = new ArrayList<Vote>();
         }
 
@@ -168,12 +166,12 @@ public class CatVsDog {
         
 	/** Connects this Vote in G1 to a Vote in G2 iff the votes
 	 *  are contradictory. */
-	void addEdge(Vote vote) {
+	void addEdge(Vote vote){
             this.edges.add(vote);
         }    
         
 	/** Returns the Votes at the end of the edges from this Vote. */
-	ArrayList<Vote> getEdges() {
+	ArrayList<Vote> getEdges(){
             return edges;
         }
 
